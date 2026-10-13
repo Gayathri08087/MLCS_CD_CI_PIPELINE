@@ -32,7 +32,7 @@ RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 # 1. Load the dataset
 if not DATA.exists():
     raise FileNotFoundError(
-        f"Dataset not found: {DATA}. " "Place drug200.csv inside the data folder."
+        f"Dataset not found: {DATA}. Place drug200.csv inside the data folder."
     )
 
 df = pd.read_csv(DATA)
