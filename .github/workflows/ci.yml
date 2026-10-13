@@ -10,6 +10,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  issues: write
 
 jobs:
   build-and-deploy:
@@ -49,7 +50,7 @@ jobs:
             echo
             echo "![Confusion Matrix](./results/confusion_matrix.png)"
           } > report.md
-          cml comment create report.md
+          cml comment create --pr=false report.md
 
       - name: Deploy to Hugging Face Static Space
         if: github.event_name != 'pull_request'
