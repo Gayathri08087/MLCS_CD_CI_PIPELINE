@@ -1,0 +1,14 @@
+Accuracy: 0.9750
+Weighted F1-score: 0.9736
+
+              precision    recall  f1-score   support
+
+       drugA       0.83      1.00      0.91         5
+       drugB       1.00      0.67      0.80         3
+       drugC       1.00      1.00      1.00         3
+       drugX       1.00      1.00      1.00        11
+       drugY       1.00      1.00      1.00        18
+
+    accuracy                           0.97        40
+   macro avg       0.97      0.93      0.94        40
+weighted avg       0.98      0.97      0.97        40

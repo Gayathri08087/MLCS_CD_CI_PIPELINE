@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Drug Classification - ML CI/CD</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/ort.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 30px 16px;
+      font-family: Arial, sans-serif;
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+
+    .container {
+      max-width: 650px;
+      margin: auto;
+      padding: 28px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.08);
+    }
+
+    h1 {
+      margin-top: 0;
+      color: #1d4ed8;
+      text-align: center;
+    }
+
+    .subtitle {
+      color: #64748b;
+      text-align: center;
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+
+    .status {
+      padding: 12px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .field {
+      margin-bottom: 17px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 7px;
+      font-weight: bold;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: white;
+      font-size: 15px;
+    }
+
+    input:focus, select:focus {
+      outline: 2px solid #93c5fd;
+      border-color: #2563eb;
+    }
+
+    button {
+      width: 100%;
+      padding: 13px;
+      border: none;
+      border-radius: 8px;
+      background: #2563eb;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+    }
+
+    .result {
+      display: none;
+      margin-top: 22px;
+      padding: 18px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 10px;
+      line-height: 1.9;
+    }
+
+    .error {
+      margin-top: 15px;
+      color: #b91c1c;
+      font-size: 14px;
+      overflow-wrap: anywhere;
+    }
+
+    .note {
+      margin-top: 22px;
+      font-size: 12px;
+      color: #64748b;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="container">
+    <h1>Drug Classification</h1>
+
+    <p class="subtitle">
+      ML Continuous Integration and Continuous Deployment
+    </p>
+
+    <div id="status" class="status">Loading model...</div>
+
+    <form id="predict-form">
+      <div class="field">
+        <label for="age">Age</label>
+        <input id="age" type="number" min="1" max="120"
+               value="30" required>
+      </div>
+
+      <div class="field">
+        <label for="sex">Sex</label>
+        <select id="sex" required>
+          <option value="F">Female (F)</option>
+          <option value="M">Male (M)</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="bp">Blood Pressure (BP)</label>
+        <select id="bp" required>
+          <option value="LOW">Low</option>
+          <option value="NORMAL" selected>Normal</option>
+          <option value="HIGH">High</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="cholesterol">Cholesterol</label>
+        <select id="cholesterol" required>
+          <option value="NORMAL" selected>Normal</option>
+          <option value="HIGH">High</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="na_to_k">Na_to_K</label>
+        <input id="na_to_k" type="number" min="0.01"
+               step="any" value="15.0" required>
+      </div>
+
+      <button type="submit" id="submit-btn" disabled>
+        Predict Drug Class
+      </button>
+    </form>
+
+    <div id="result" class="result" aria-live="polite">
+      <div>Predicted Class: <strong id="predicted-class"></strong></div>
+      <div>Model Confidence: <strong id="confidence"></strong></div>
+    </div>
+
+    <div id="error" class="error" role="alert"></div>
+
+    <p class="note">
+      Educational demonstration only. This model is not a medical
+      decision tool and must not be used to select or prescribe medication.
+    </p>
+  </main>
+
+  <script>
+    const MODEL_URL = "model/drug_model.onnx";
+
+    let session = null;
+
+    const statusElement = document.getElementById("status");
+    const submitButton = document.getElementById("submit-btn");
+    const resultElement = document.getElementById("result");
+    const errorElement = document.getElementById("error");
+
+    async function loadModel() {
+      try {
+        session = await ort.InferenceSession.create(MODEL_URL);
+
+        statusElement.textContent = "Model loaded successfully.";
+        submitButton.disabled = false;
+      } catch (error) {
+        statusElement.textContent = "Model failed to load.";
+        errorElement.textContent =
+          "Check that model/drug_model.onnx exists and is accessible. " +
+          error.message;
+        console.error("Model loading error:", error);
+      }
+    }
+
+    async function predict(event) {
+      event.preventDefault();
+
+      if (!session) {
+        errorElement.textContent = "The model is not ready yet.";
+        return;
+      }
+
+      submitButton.disabled = true;
+      submitButton.textContent = "Predicting...";
+      errorElement.textContent = "";
+      resultElement.style.display = "none";
+
+      try {
+        const age = Number(document.getElementById("age").value);
+        const sex = document.getElementById("sex").value;
+        const bp = document.getElementById("bp").value;
+        const cholesterol =
+          document.getElementById("cholesterol").value;
+        const naToK = Number(
+          document.getElementById("na_to_k").value
+        );
+
+        const feeds = {
+          Age: new ort.Tensor(
+            "int64",
+            BigInt64Array.from([BigInt(Math.round(age))]),
+            [1, 1]
+          ),
+          Sex: new ort.Tensor("string", [sex], [1, 1]),
+          BP: new ort.Tensor("string", [bp], [1, 1]),
+          Cholesterol: new ort.Tensor(
+            "string", [cholesterol], [1, 1]
+          ),
+          Na_to_K: new ort.Tensor(
+            "float64", Float64Array.from([naToK]), [1, 1]
+          )
+        };
+
+        const output = await session.run(feeds);
+
+        const labelOutput =
+          output.label || output[session.outputNames[0]];
+
+        const probabilityOutput =
+          output.probabilities || output[session.outputNames[1]];
+
+        const label = labelOutput.data[0];
+
+        document.getElementById("predicted-class").textContent =
+          String(label);
+
+        if (probabilityOutput && probabilityOutput.data.length > 0) {
+          const probabilities = Array.from(probabilityOutput.data);
+          const maxProbability = Math.max(...probabilities);
+
+          document.getElementById("confidence").textContent =
+            (maxProbability * 100).toFixed(2) + "%";
+        } else {
+          document.getElementById("confidence").textContent =
+            "Unavailable";
+        }
+
+        resultElement.style.display = "block";
+      } catch (error) {
+        errorElement.textContent =
+          "Prediction failed. Check the browser console and model inputs. " +
+          error.message;
+        console.error("Prediction error:", error);
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = "Predict Drug Class";
+      }
+    }
+
+    document.getElementById("predict-form")
+      .addEventListener("submit", predict);
+
+    loadModel();
+  </script>
+</body>
+</html>

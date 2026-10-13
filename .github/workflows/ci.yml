@@ -1,0 +1,70 @@
+name: ML Continuous Integration and Deployment
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up CML
+        uses: iterative/setup-cml@v2
+
+      - name: Install dependencies
+        run: make install
+
+      - name: Check formatting
+        run: make format
+
+      - name: Train model
+        run: make train
+
+      - name: Generate evaluation report
+        env:
+          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            echo "# Model Evaluation"
+            echo
+            cat results/metrics.txt
+            echo
+            echo "## Confusion Matrix"
+            echo
+            echo "![Confusion Matrix](./results/confusion_matrix.png)"
+          } > report.md
+          cml comment create report.md
+
+      - name: Deploy to Hugging Face Static Space
+        if: github.event_name != 'pull_request'
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE_ID: ${{ secrets.HF_SPACE_ID }}
+        run: |
+          python -m pip install --upgrade huggingface_hub
+          huggingface-cli login --token "$HF_TOKEN"
+          huggingface-cli upload "$HF_SPACE_ID" app/ . \
+            --repo-type space \
+            --commit-message "Deploy static app"
+          huggingface-cli upload "$HF_SPACE_ID" model/ model \
+            --repo-type space \
+            --commit-message "Upload trained model"
+          huggingface-cli upload "$HF_SPACE_ID" results/ results \
+            --repo-type space \
+            --commit-message "Upload evaluation results"
