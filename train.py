@@ -1,4 +1,3 @@
-
 from pathlib import Path
 
 import joblib
@@ -21,7 +20,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 
-
 # Project paths
 DATA = Path("data/drug200.csv")
 MODEL_DIR = Path("model")
@@ -34,8 +32,7 @@ RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 # 1. Load the dataset
 if not DATA.exists():
     raise FileNotFoundError(
-        f"Dataset not found: {DATA}. "
-        "Place drug200.csv inside the data folder."
+        f"Dataset not found: {DATA}. " "Place drug200.csv inside the data folder."
     )
 
 df = pd.read_csv(DATA)
