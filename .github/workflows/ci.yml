@@ -59,6 +59,12 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_SPACE_ID: ${{ secrets.HF_SPACE_ID }}
         run: |
+          # Clean whitespace, newlines, and carriage returns from secrets
+          HF_TOKEN="$(echo "$HF_TOKEN" | tr -d '\r\n[:space:]')"
+          HF_SPACE_ID="$(echo "$HF_SPACE_ID" | tr -d '\r\n[:space:]')"
+          export HF_TOKEN
+          export HF_SPACE_ID
+
           if [ -z "$HF_TOKEN" ]; then
             echo "::error::Secret 'HF_TOKEN' is missing or not configured in repository secrets."
             exit 1
@@ -83,20 +89,23 @@ jobs:
           echo "Using Hugging Face CLI: $HF_CLI"
 
           if [ "$HF_CLI" = "hf" ]; then
-            hf auth login --token "$HF_TOKEN"
+            hf auth login --token "$HF_TOKEN" || true
           elif [ "$HF_CLI" = "huggingface-cli" ]; then
-            huggingface-cli login --token "$HF_TOKEN"
+            huggingface-cli login --token "$HF_TOKEN" || true
           else
-            python -m huggingface_hub.cli.hf auth login --token "$HF_TOKEN"
+            python -m huggingface_hub.cli.hf auth login --token "$HF_TOKEN" || true
           fi
 
           $HF_CLI upload "$HF_SPACE_ID" app/ . \
             --repo-type space \
-            --commit-message "Deploy static app"
+            --commit-message "Deploy static app" \
+            --token "$HF_TOKEN"
           $HF_CLI upload "$HF_SPACE_ID" model/ model \
             --repo-type space \
-            --commit-message "Upload trained model"
+            --commit-message "Upload trained model" \
+            --token "$HF_TOKEN"
           $HF_CLI upload "$HF_SPACE_ID" results/ results \
             --repo-type space \
-            --commit-message "Upload evaluation results"
+            --commit-message "Upload evaluation results" \
+            --token "$HF_TOKEN"
 
