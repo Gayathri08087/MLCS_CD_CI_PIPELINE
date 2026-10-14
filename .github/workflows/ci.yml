@@ -59,14 +59,33 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_SPACE_ID: ${{ secrets.HF_SPACE_ID }}
         run: |
-          python -m pip install --upgrade huggingface_hub
-          huggingface-cli login --token "$HF_TOKEN"
-          huggingface-cli upload "$HF_SPACE_ID" app/ . \
+          python -m pip install --upgrade "huggingface_hub[cli]"
+          export PATH="$(python -m site --user-base)/bin:$PATH"
+
+          if command -v hf >/dev/null 2>&1; then
+            HF_CLI="hf"
+          elif command -v huggingface-cli >/dev/null 2>&1; then
+            HF_CLI="huggingface-cli"
+          else
+            echo "Error: Neither 'hf' nor 'huggingface-cli' found after installation." >&2
+            exit 1
+          fi
+
+          echo "Using Hugging Face CLI: $HF_CLI"
+
+          if [ "$HF_CLI" = "hf" ]; then
+            hf auth login --token "$HF_TOKEN"
+          else
+            huggingface-cli login --token "$HF_TOKEN"
+          fi
+
+          $HF_CLI upload "$HF_SPACE_ID" app/ . \
             --repo-type space \
             --commit-message "Deploy static app"
-          huggingface-cli upload "$HF_SPACE_ID" model/ model \
+          $HF_CLI upload "$HF_SPACE_ID" model/ model \
             --repo-type space \
             --commit-message "Upload trained model"
-          huggingface-cli upload "$HF_SPACE_ID" results/ results \
+          $HF_CLI upload "$HF_SPACE_ID" results/ results \
             --repo-type space \
             --commit-message "Upload evaluation results"
+
