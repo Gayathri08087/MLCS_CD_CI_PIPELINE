@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
   issues: write
 
@@ -50,6 +50,7 @@ jobs:
             echo
             echo "![Confusion Matrix](./results/confusion_matrix.png)"
           } > report.md
+          cat report.md >> $GITHUB_STEP_SUMMARY
           cml comment create --pr=false report.md
 
       - name: Deploy to Hugging Face Static Space
